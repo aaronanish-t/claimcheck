@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ClaimCheck options</title>
+    <style>
+      body { font: 13px/1.5 system-ui, sans-serif; margin: 16px; min-width: 360px; }
+      label { display: block; font-weight: 600; margin-bottom: 4px; }
+      input { width: 100%; box-sizing: border-box; padding: 6px; font: inherit; }
+      p { color: #59636e; margin: 6px 0 12px; }
+      button { font: inherit; padding: 4px 12px; margin-right: 8px; }
+      #status { margin-left: 4px; color: #1f883d; }
+    </style>
+  </head>
+  <body>
+    <label for="token">GitHub token (optional)</label>
+    <input id="token" type="password" autocomplete="off" placeholder="github_pat_…" />
+    <p>
+      Without a token GitHub allows 60 API requests an hour, and each issue uses about 3.
+      A fine-grained token with no extra permissions (public repositories, read-only) raises this to 5,000.
+      It's stored only in this browser's extension storage and sent only to api.github.com.
+    </p>
+    <button id="save">Save</button><button id="clear">Clear</button><span id="status"></span>
+    <script src="options.js" type="module"></script>
+  </body>
+</html>

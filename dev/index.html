@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ClaimCheck dev harness</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; margin: 24px; background: #f6f8fa; }
+      form { margin-bottom: 16px; display: flex; gap: 8px; }
+      input { width: 420px; padding: 6px; font: inherit; }
+      .layout { display: flex; gap: 24px; align-items: flex-start; }
+      .main { flex: 1; background: #fff; border: 1px solid #d1d9e0; border-radius: 6px; padding: 16px; min-height: 200px; }
+      .Layout-sidebar { width: 320px; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0d1117; color: #e6edf3; }
+        .main { background: #0d1117; border-color: #3d444d; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Runs the extension's real modules against the live GitHub API, outside an extension. -->
+    <form id="f">
+      <input id="issue" placeholder="owner/repo/issues/123 or full GitHub issue URL" />
+      <button>Check</button>
+    </form>
+    <div class="layout">
+      <div class="main"><div id="title">Enter an issue above.</div></div>
+      <div class="Layout-sidebar" id="sidebar"></div>
+    </div>
+    <script type="module">
+      import { findClaims, findGerritChanges, findLinkedPRs, findMentionedPRs, parseIssuePath, verdict } from "../src/lib/claims.js";
+      import { fetchIssueData, fetchPolicy } from "../src/lib/github.js";
+      import { mountPanel, renderAnalysis, renderError, renderLoading } from "../src/lib/render.js";
+
+      async function run(value) {
+        const path = "/" + value.replace(/^https:\/\/github\.com\//, "").replace(/^\//, "");
+        const target = parseIssuePath(path);
+        const box = mountPanel(document.getElementById("sidebar"));
+        if (!target) {
+          renderError(box, "Not an issue URL");
+          return;
+        }
+        renderLoading(box);
+        try {
+          const policyPromise = fetchPolicy(target);
+          // Prefer a snapshot from scripts/fetch-fixture.mjs when one exists.
+          const fixture = await fetch(`fixtures/${target.owner}__${target.repo}__${target.number}.json`)
+            .then(r => (r.ok ? r.json() : null))
+            .catch(() => null);
+          const { issue, comments, timeline, authenticated } = fixture
+            ? { ...fixture, authenticated: true }
+            : await fetchIssueData(target);
+          document.getElementById("title").textContent = `${target.owner}/${target.repo}#${target.number}: ${issue.title}`;
+          const fullName = `${target.owner}/${target.repo}`;
+          const a = {
+            fullName,
+            claims: findClaims(comments, issue),
+            prs: findLinkedPRs(timeline, fullName),
+            gerrit: findGerritChanges(comments),
+            authenticated,
+            policy: null,
+          };
+          a.mentioned = findMentionedPRs(comments, fullName, {
+            issueNumber: target.number,
+            linked: a.prs.filter(p => !p.external).map(p => p.number),
+          });
+          a.verdict = verdict({ issue, ...a });
+          renderAnalysis(box, a);
+          a.policy = await policyPromise;
+          renderAnalysis(box, a);
+          window.__last = a;
+        } catch (e) {
+          renderError(box, String(e));
+        }
+      }
+
+      document.getElementById("f").addEventListener("submit", e => {
+        e.preventDefault();
+        const v = document.getElementById("issue").value.trim();
+        history.replaceState(null, "", "?issue=" + encodeURIComponent(v));
+        run(v);
+      });
+      const initial = new URLSearchParams(location.search).get("issue");
+      if (initial) {
+        document.getElementById("issue").value = initial;
+        run(initial);
+      }
+    </script>
+  </body>
+</html>

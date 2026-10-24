@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "ClaimCheck",
+  "version": "0.1.0",
+  "description": "See at a glance if a GitHub issue is already claimed or has a PR, and what the repo's AI and PR policy says.",
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*/*/issues/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "claimcheck@aaronanish-t",
+      "strict_min_version": "128.0"
+    }
+  }
+}
