@@ -36,7 +36,7 @@ npm install
 npm run build
 ```
 
-- **Chrome / Edge:** open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and pick the `dist` folder.
+- **Chrome / Edge:** open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, and pick the **`dist`** folder (not the project folder itself).
 - **Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and pick `dist/manifest.json`.
 
 ### GitHub token (optional)
