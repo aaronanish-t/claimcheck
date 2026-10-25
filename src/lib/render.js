@@ -261,7 +261,7 @@ export function renderAnalysis(box, a, { onRefresh, onClose } = {}) {
       "div",
       { class: "foot muted" },
       "Heuristic: check the linked comments and files before acting.",
-      a.authenticated ? null : " Add a token in the options for a higher rate limit."
+      a.authenticated || a.error ? null : " Add a token in the options for a higher rate limit."
     )
   );
 
