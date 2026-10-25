@@ -28,6 +28,61 @@ let run = 0;
 let last = null;
 let handlers = null;
 
+const ICON_STATE = [
+  [/merge/, "merged"],
+  [/closed/, "closed"],
+  [/draft|pull-request/, "open"],
+];
+
+/**
+ * Reads the PRs GitHub itself lists under "Development" (PRs that will close
+ * the issue). Works without the API, so it covers rate limits and anything the
+ * timeline leaves out.
+ */
+function readPagePRs({ owner, repo }) {
+  const fullName = `${owner}/${repo}`;
+  const prs = [];
+  for (const box of document.querySelectorAll('[data-testid="issue-viewer-linked-pr-container"]')) {
+    const a = box.querySelector('a[href*="/pull/"]');
+    const m = a && /github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)|^\/([^/]+\/[^/]+)\/pull\/(\d+)/.exec(a.getAttribute("href"));
+    if (!m) {
+      continue;
+    }
+    const prRepo = m[1] ?? m[3];
+    const number = Number(m[2] ?? m[4]);
+    const icon = box.querySelector("svg");
+    const label = (icon?.getAttribute("aria-label") || "").toLowerCase();
+    const cls = icon?.getAttribute("class") || "";
+    let state = ["open", "merged", "closed"].find(s => label.includes(s));
+    if (!state) {
+      state = ICON_STATE.find(([re]) => re.test(cls))?.[1] ?? "open";
+    }
+    prs.push({
+      number,
+      // innerText keeps the line break between the title and the repo name.
+      title: (a.innerText || a.textContent || "").trim().split("\n")[0],
+      url: `https://github.com/${prRepo}/pull/${number}`,
+      state,
+      repo: prRepo,
+      author: null,
+      external: prRepo.toLowerCase() !== fullName.toLowerCase(),
+      fromPage: true,
+    });
+  }
+  return prs;
+}
+
+/** Adds page-listed PRs the API didn't return. */
+function withPagePRs(prs, target) {
+  const out = [...prs];
+  for (const p of readPagePRs(target)) {
+    if (!out.some(q => q.repo.toLowerCase() === p.repo.toLowerCase() && q.number === p.number)) {
+      out.push(p);
+    }
+  }
+  return out;
+}
+
 function findSidebar() {
   for (const sel of SIDEBAR_SELECTORS) {
     const node = document.querySelector(sel);
@@ -79,7 +134,7 @@ async function check({ refresh = false } = {}) {
     const analysis = {
       fullName,
       claims: findClaims(comments, issue),
-      prs: findLinkedPRs(timeline, fullName),
+      prs: withPagePRs(findLinkedPRs(timeline, fullName), target),
       gerrit: findGerritChanges(comments),
       authenticated,
       policy: null,
@@ -109,7 +164,13 @@ async function check({ refresh = false } = {}) {
         ? `Can't check claims: GitHub's rate limit for this network resets at ${new Date(e.resetAt).toLocaleTimeString()}. Add a token in the extension options to avoid this.`
         : `Couldn't check this issue (${e.message}).`;
     // Policy files don't use the API, so they can still be shown.
-    const partial = { verdict: null, error, claims: [], prs: [], gerrit: [], mentioned: [], authenticated: false, policy: null };
+    const pagePRs = withPagePRs([], target);
+    const partial = { fullName: `${target.owner}/${target.repo}`, verdict: null, error, claims: [], prs: pagePRs, gerrit: [], mentioned: [], authenticated: false, policy: null };
+    const pageVerdict = verdict({ issue: { state: "open", assignees: [] }, ...partial });
+    if (pageVerdict.level === "taken") {
+      // A linked open or merged PR settles it even without the API.
+      partial.verdict = pageVerdict;
+    }
     renderAnalysis(mountPanel(findSidebar()), partial, handlers);
     last = { key, analysis: partial };
     partial.policy = await fetchPolicy(target, { refresh }).catch(() => ({ flags: [], files: [] }));

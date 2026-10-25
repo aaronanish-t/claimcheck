@@ -171,7 +171,7 @@ export function renderAnalysis(box, a, { onRefresh, onClose } = {}) {
             {},
             link(p.url, `${p.external ? p.repo : ""}#${p.number}`),
             ` ${p.title} `,
-            el("span", { class: "muted" }, `(${STATE_TEXT[p.state] ?? p.state}, @${p.author})`)
+            el("span", { class: "muted" }, `(${STATE_TEXT[p.state] ?? p.state}${p.author ? `, @${p.author}` : ""})`)
           )
         )
       )
