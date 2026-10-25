@@ -83,7 +83,27 @@ function withPagePRs(prs, target) {
   return out;
 }
 
+// If GitHub keeps re-rendering the sidebar and dropping the panel, stop
+// re-inserting it there (that can fight GitHub's layout and make the page jump)
+// and float it instead, outside GitHub's DOM.
+const REMOUNT_LIMIT = 3;
+const REMOUNT_WINDOW = 10_000;
+let remounts = [];
+let floating = false;
+
+function noteRemount() {
+  const now = Date.now();
+  remounts = remounts.filter(t => now - t < REMOUNT_WINDOW);
+  remounts.push(now);
+  if (remounts.length > REMOUNT_LIMIT) {
+    floating = true;
+  }
+}
+
 function findSidebar() {
+  if (floating) {
+    return null;
+  }
   for (const sel of SIDEBAR_SELECTORS) {
     const node = document.querySelector(sel);
     if (node) {
@@ -188,6 +208,7 @@ function onChange() {
     check();
   } else if (currentKey && !document.getElementById("claimcheck-host") && hiddenFor !== currentKey) {
     // The sidebar was re-rendered and took our panel with it.
+    noteRemount();
     if (last?.key === currentKey) {
       renderAnalysis(mountPanel(findSidebar()), last.analysis, handlers);
     } else {
