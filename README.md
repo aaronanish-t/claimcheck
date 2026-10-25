@@ -1,5 +1,7 @@
 # ClaimCheck
 
+[![CI](https://github.com/aaronanish-t/claimcheck/actions/workflows/ci.yml/badge.svg)](https://github.com/aaronanish-t/claimcheck/actions/workflows/ci.yml)
+
 **Is this GitHub issue already taken, and what does the repo allow?** ClaimCheck answers both on the issue page, before you spend an evening on a fix nobody can merge.
 
 <!-- TODO: screenshot / GIF of the panel on a real issue -->
