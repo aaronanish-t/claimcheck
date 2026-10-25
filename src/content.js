@@ -42,7 +42,15 @@ const ICON_STATE = [
 function readPagePRs({ owner, repo }) {
   const fullName = `${owner}/${repo}`;
   const prs = [];
-  for (const box of document.querySelectorAll('[data-testid="issue-viewer-linked-pr-container"]')) {
+  const boxes = [
+    // "Development" in the sidebar.
+    ...document.querySelectorAll('[data-testid="issue-viewer-linked-pr-container"]'),
+    // The PR chip next to the Open/Closed state in the issue header.
+    ...[...document.querySelectorAll('[data-testid="issue-metadata-fixed"] a[href*="/pull/"]')].map(
+      a => a.parentElement
+    ),
+  ];
+  for (const box of boxes) {
     const a = box.querySelector('a[href*="/pull/"]');
     const m = a && /github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)|^\/([^/]+\/[^/]+)\/pull\/(\d+)/.exec(a.getAttribute("href"));
     if (!m) {
@@ -168,7 +176,7 @@ async function check({ refresh = false } = {}) {
     // GitHub re-renders the page as it loads; re-mount if our host was dropped.
     box = mountPanel(findSidebar());
     renderAnalysis(box, analysis, handlers);
-    last = { key, analysis };
+    last = { key, analysis, issue };
 
     analysis.policy = await policyPromise.catch(() => ({ flags: [], files: [] }));
     if (thisRun === run) {
@@ -192,7 +200,7 @@ async function check({ refresh = false } = {}) {
       partial.verdict = pageVerdict;
     }
     renderAnalysis(mountPanel(findSidebar()), partial, handlers);
-    last = { key, analysis: partial };
+    last = { key, analysis: partial, issue: null };
     partial.policy = await fetchPolicy(target, { refresh }).catch(() => ({ flags: [], files: [] }));
     if (thisRun === run) {
       renderAnalysis(mountPanel(findSidebar()), partial, handlers);
@@ -201,6 +209,27 @@ async function check({ refresh = false } = {}) {
 }
 
 // GitHub navigates without full page loads, so watch the URL and the DOM.
+/** GitHub can render the Development section after we've looked; merge late PRs in. */
+function updateFromPage() {
+  const target = parseIssuePath(location.pathname);
+  if (!last || !target || last.key !== currentKey || hiddenFor === currentKey) {
+    return;
+  }
+  const a = last.analysis;
+  const prs = withPagePRs(a.prs, target);
+  if (prs.length === a.prs.length) {
+    return;
+  }
+  a.prs = prs;
+  a.mentioned = (a.mentioned || []).filter(m => !prs.some(p => !p.external && p.number === m.number));
+  const v = verdict({ issue: last.issue ?? { state: "open", assignees: [] }, ...a });
+  // Without API data, only a definite answer (an open or merged PR) replaces the warning.
+  if (last.issue || v.level === "taken") {
+    a.verdict = v;
+  }
+  renderAnalysis(mountPanel(findSidebar()), a, handlers);
+}
+
 let lastPath = null;
 function onChange() {
   if (location.pathname !== lastPath) {
@@ -215,6 +244,8 @@ function onChange() {
       currentKey = null;
       check();
     }
+  } else {
+    updateFromPage();
   }
 }
 
