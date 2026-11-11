@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ClaimCheck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "See at a glance if a GitHub issue is already claimed or has a PR, and what the repo's AI and PR policy says.",
   "icons": {
     "48": "icons/icon48.png",

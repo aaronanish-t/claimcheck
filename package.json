@@ -1,6 +1,6 @@
 {
   "name": "claimcheck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Browser extension that shows whether a GitHub issue is already claimed, has linked PRs, and what the repo's AI/PR contribution policy says.",
   "private": true,
   "type": "module",
