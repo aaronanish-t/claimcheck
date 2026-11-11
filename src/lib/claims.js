@@ -22,6 +22,11 @@ const CLAIM_PATTERNS = [
   /\bI(?:'ve| have) (?:opened|submitted|created|raised) (?:a |the )?(?:pr|pull request|patch)\b/i,
   /\bI(?:'d| would) like to (?:claim|be assigned)\b/i,
   /\bis (?:this|it) (?:still )?(?:available|open for contribution|up for grabs)\b/i,
+  // Offers that never say "work on this": "implemented a local fix", "would the
+  // maintainers be open to a PR?". A maintainer saying "we'd be open to a PR"
+  // is an invitation, not a claim, so the maintainers phrase is the asker's.
+  /\bimplemented (?:a |the )?(?:local )?(?:fix|patch)\b/i,
+  /\b(?:would|will) (?:the )?maintainers (?:be )?(?:open|happy|willing) to (?:a |an? |my )?(?:pull request|PR)\b/i,
 ];
 
 // Phrases a claimer uses to give an issue back.

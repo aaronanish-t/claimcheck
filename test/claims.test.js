@@ -49,6 +49,18 @@ describe("findClaims", () => {
     }
   });
 
+  it("finds an offer to send a fix that never says 'work on this'", () => {
+    const body =
+      "Hi! I was able to reproduce both reported issues and implemented a local fix. " +
+      "Would the maintainers be open to a pull request for this fix? Thanks!";
+    expect(findClaims([comment("a", body)])).toHaveLength(1);
+    expect(findClaims([comment("a", "Would the maintainers be open to a PR?")])).toHaveLength(1);
+  });
+
+  it("does not treat a maintainer's invitation as a claim", () => {
+    expect(findClaims([comment("m", "We'd be open to a pull request for this.")])).toHaveLength(0);
+  });
+
   it("finds claims written with curly apostrophes", () => {
     const phrases = [
       "I’d like to work on this.",
