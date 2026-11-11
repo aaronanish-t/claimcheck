@@ -49,6 +49,17 @@ describe("findClaims", () => {
     }
   });
 
+  it("finds claims written with curly apostrophes", () => {
+    const phrases = [
+      "I’d like to work on this.",
+      "I’m working on a fix",
+      "I’ll take this",
+    ];
+    for (const p of phrases) {
+      expect(findClaims([comment("a", p)]), p).toHaveLength(1);
+    }
+  });
+
   it("ignores unrelated comments", () => {
     const phrases = [
       "Reproduced on Linux, macOS and Windows.",

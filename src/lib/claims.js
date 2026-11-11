@@ -61,9 +61,13 @@ export function snippetAround(text, index, max = 160) {
   return s;
 }
 
-/** Strips quoted replies (`> ...`) and fenced code, which aren't the commenter's own claim. */
+/**
+ * Strips quoted replies (`> ...`) and fenced code, which aren't the commenter's
+ * own claim. Curly apostrophes become straight ones so "I’d" matches "I'd".
+ */
 function ownText(body) {
   return (body || "")
+    .replace(/[‘’]/g, "'")
     .replace(/```[\s\S]*?```/g, " ")
     .split("\n")
     .filter(line => !line.trimStart().startsWith(">"))
