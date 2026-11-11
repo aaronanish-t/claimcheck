@@ -11,22 +11,59 @@ export function parseIssuePath(pathname) {
 
 // Phrases people use to claim an issue. Kept specific on purpose: a false
 // "claimed" verdict is worse than a missed one, because the panel always
-// links the comments anyway.
+// links the comments anyway. Every pattern needs a clear object ("this", "it",
+// "a PR") so that "I'll take a look" or "I'm working on Windows" don't match.
+// Apostrophes are normalised to straight ones before matching.
+const THIS = String.raw`(?:this|it|that)(?: one| issue| bug| task)?`;
+const PR = String.raw`(?:a |the |my )?(?:pr|pull request|patch|fix)`;
 const CLAIM_PATTERNS = [
-  /\bI(?:'| a)?m (?:currently |now )?working on (?:this|it|a fix|a pr|a patch)\b/i,
-  /\bI(?:'d| would) (?:like|love) to (?:work on|take|tackle|pick up|fix|help (?:with|fix))\b/i,
-  /\b(?:can|could|may) I (?:work on|take|pick up|tackle|be assigned|get assigned|claim)\b/i,
-  /\bI(?:'ll| will) (?:take|work on|pick up|tackle|fix|open a pr|submit a pr|send a pr)\b/i,
+  // In progress: "I'm (still) working on this", "I'm on it", "I've started on it".
+  new RegExp(String.raw`\bI(?:'m| am)(?: (?:currently|now|still|already|actively))? (?:working on|on) (?:${THIS}|a fix|a pr|a patch|the fix)`, "i"),
+  new RegExp(String.raw`\bI(?:'ve| have) (?:just )?(?:started|begun) (?:working )?on ${THIS}`, "i"),
+  /^\W*(?:working on (?:it|this)|on it|taking (?:this|it)|claiming (?:this|it)|claimed)\W*$/im,
+  // Offers: "I'd like to / love to / want to / happy to ...".
+  /\bI(?:'d| would) (?:like|love|want) to (?:work on|take|tackle|pick up|fix|help(?: with| fix| out)?|claim|be assigned|have a go|give (?:this|it) a (?:shot|try|go)|try(?: this| it|\.|$))/i,
+  /\b(?:I(?:'d| would) |would )(?:like|love|want) to contribute (?:a |an |to (?:this|fixing|solving)|this)/i,
+  /\bI want to (?:work on|take|tackle|pick up|fix) /i,
+  /\bI(?:'d| would) be (?:happy|glad|more than happy) to (?:work on|take|fix|implement|submit|open|tackle|pick up)\b/i,
+  // "Happy to take this on", but not a maintainer's "happy to take a PR".
+  /\b(?:happy|glad|willing|keen|eager) to (?:work on|take (?:this|it|that|on|over)|fix (?:this|it|that)|tackle|pick (?:this|it) up|submit|give (?:this|it) a (?:shot|try|go))/i,
+  /\blet me (?:take|work on|pick up|tackle|try|fix|handle) (?:this|it)\b/i,
+  new RegExp(String.raw`\bI(?:'ll| will) (?:take|work on|pick up|tackle|handle|fix) ${THIS}(?! (?:by|with|using|if|when))`, "i"),
+  new RegExp(String.raw`\bI(?:'ll| will) (?:open|submit|send|raise|create|file|make) ${PR}`, "i"),
+  /\bI(?:'ll| will) (?:give (?:this|it) a (?:shot|try|go)|take a (?:stab|crack|shot) at (?:this|it))/i,
+  new RegExp(String.raw`\bI can (?:take|fix|work on|handle|tackle|pick up) ${THIS}(?! (?:by|with|using|if|when|temporarily|locally))`, "i"),
+  // Questions that ask for the issue.
+  /\b(?:can|could|may|might|shall) I (?:please )?(?:work on|take|pick up|tackle|be assigned|get assigned|claim)\b/i,
+  /\b(?:can|could|would) (?:you|someone) (?:please )?assign (?:me|(?:it|this(?: issue| one)?|the issue) to me)\b/i,
   /\b(?:please )?assign (?:it|this(?: issue)?) to me\b/i,
-  /\bI(?:'d| would) be happy to (?:work on|take|fix|implement|submit|open)\b/i,
-  /\bI(?:'ve| have) (?:opened|submitted|created|raised) (?:a |the )?(?:pr|pull request|patch)\b/i,
-  /\bI(?:'d| would) like to (?:claim|be assigned)\b/i,
-  /\bis (?:this|it) (?:still )?(?:available|open for contribution|up for grabs)\b/i,
-  // Offers that never say "work on this": "implemented a local fix", "would the
-  // maintainers be open to a PR?". A maintainer saying "we'd be open to a PR"
-  // is an invitation, not a claim, so the maintainers phrase is the asker's.
+  /\bmind if I (?:take|pick up|pick (?:this|it) up|work on|tackle|try)\b/i,
+  /\bis (?:this|it)(?: issue)? (?:still )?(?:available|open for contributions?|up for grabs)\b/i,
+  // Already have something: "I have a fix ready", "implemented a local fix".
+  new RegExp(String.raw`\bI(?:'ve| have)(?: got)? ${PR}(?: is)? (?:ready|prepared|locally)\b`, "i"),
+  new RegExp(String.raw`\bI(?:'ve| have) (?:opened|submitted|created|raised|written|prepared|drafted|implemented) ${PR}`, "i"),
   /\bimplemented (?:a |the )?(?:local )?(?:fix|patch)\b/i,
+  // A maintainer saying "we'd be open to a PR" is an invitation, not a claim,
+  // so only the asker's "would the maintainers be open to ..." counts.
   /\b(?:would|will) (?:the )?maintainers (?:be )?(?:open|happy|willing) to (?:a |an? |my )?(?:pull request|PR)\b/i,
+  // More ways people offer: "going to ...", "interested in working on", "can I
+  // submit my own", "mind if I PR this", "prepare a focused fix".
+  /\bI(?:'m| am) going to (?:work on|fix|tackle|implement|take|open a|submit a|send a|[^.\n]{0,60}\b(?:and|then) (?:fix|open|submit|send))\b/i,
+  /\bI(?:'m| am) (?:really |very |also )?interested in (?:working on|contributing|fixing|taking|helping|picking|tackling)\b/i,
+  /\b(?:can|could|may) I (?:please )?try (?:on |at )?(?:this|fixing|to fix|solving)\b/i,
+  /\b(?:can|could|may) I (?:please )?(?:submit|send|open|raise|make|share|create) (?:my own|my (?:pr|fix|patch)|a (?:pr|pull request|patch|fix)|one|pr)\b/i,
+  /\bmind if I (?:pr|open a (?:pr|pull request)|send a (?:pr|pull request)|submit a (?:pr|pull request))\b/i,
+  new RegExp(String.raw`\bI can try (?:and|to) (?:take|fix|work on|handle|tackle) ${THIS}`, "i"),
+  /\bI can (?:write|prepare|open|submit|send|make) (?:a |another |the )?(?:pr|pull request|patch|fix)\b/i,
+  /\bI(?:'ll| will) (?:prepare|write|put together|draft) (?:a |the |my )?(?:pr|pull request|patch|fix)\b/i,
+  /\b(?:I(?:'d| would) )?(?:be )?happy to contribute\b/i,
+  /\bprepare (?:a |the )?(?:focused |small |minimal )?(?:fix|patch|pr|pull request)\b/i,
+  /\bI(?:'d| would) (?:like|love|want) to (?:investigate|look into|dig into|debug)[^.\n]{0,60}\b(?:and|then) (?:contribute|fix|open|submit|send|prepare)/i,
+  // "I will work on adding a section ...", "I'll take DateOffset and Tick."
+  /\bI(?:'ll| will) (?:work on|start on|start working on) (?:adding|fixing|implementing|writing|updating|improving|making|creating|resolving|a fix|the fix)\b/i,
+  /\bI(?:'ll| will) take (?:[A-Z][A-Za-z_]+|`)/,
+  // Bot-style commands on a line of their own: /assign, /take, .take, take.
+  /^\s*[\/.!]?(?:assign|take|claim)(?: me)?\s*$/im,
 ];
 
 // Phrases a claimer uses to give an issue back.
@@ -74,6 +111,7 @@ function ownText(body) {
   return (body || "")
     .replace(/[‘’]/g, "'")
     .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`\n]*`/g, " ")
     .split("\n")
     .filter(line => !line.trimStart().startsWith(">"))
     .join("\n");
